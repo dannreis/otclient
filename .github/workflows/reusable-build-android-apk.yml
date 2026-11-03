@@ -14,6 +14,7 @@ env:
   COMPILE_SDK: "36"
   BUILD_TOOLS_VERSION: "36.0.0"
   CI_ANDROID_ABIS: "arm64-v8a,armeabi-v7a,x86_64"
+  CI_ANDROID_ABIS_CACHE: "arm64-v8a-armeabi-v7a-x86_64"
   CI_VCPKG_TRIPLET: "arm64-android"
   LUAJIT_COMMIT: "d0e88930ddde28ff662503f9f20facf34f7265aa"
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
@@ -145,7 +146,7 @@ jobs:
           path: |
             luajit-src
             android/app/libs
-          key: luajit-android-${{ runner.os }}-${{ env.CI_ANDROID_ABIS }}-ndk-${{ env.NDK_VERSION }}-${{ env.LUAJIT_COMMIT }}-${{ hashFiles('build_luajit_android.sh') }}
+          key: luajit-android-${{ runner.os }}-${{ env.CI_ANDROID_ABIS_CACHE }}-ndk-${{ env.NDK_VERSION }}-${{ env.LUAJIT_COMMIT }}-${{ hashFiles('build_luajit_android.sh') }}
 
       - name: Fetch LuaJIT source
         if: steps.luajit-cache.outputs.cache-hit != 'true'
