@@ -11,8 +11,8 @@ env:
   JAVA_VERSION: "17"
   NDK_VERSION: "29.0.13599879"
   CMAKE_VERSION: "3.22.1"
-  COMPILE_SDK: "36"
-  BUILD_TOOLS_VERSION: "36.0.0"
+  COMPILE_SDK: "37"
+  BUILD_TOOLS_VERSION: "37.0.0"
   CI_ANDROID_ABIS: "arm64-v8a,armeabi-v7a,x86_64"
   CI_ANDROID_ABIS_CACHE: "arm64-v8a-armeabi-v7a-x86_64"
   CI_VCPKG_TRIPLET: "arm64-android"
@@ -224,7 +224,7 @@ jobs:
           test -s "$apk"
           aapt2 dump badging "$apk" | grep -E "^(sdkVersion|targetSdkVersion|native-code:)"
           aapt2 dump badging "$apk" | grep -q "sdkVersion:'24'"
-          aapt2 dump badging "$apk" | grep -q "targetSdkVersion:'36'"
+          aapt2 dump badging "$apk" | grep -q "targetSdkVersion:'37'"
           aapt2 dump badging "$apk" | grep -q "arm64-v8a"
           aapt2 dump badging "$apk" | grep -q "armeabi-v7a"
           aapt2 dump badging "$apk" | grep -q "x86_64"
@@ -238,14 +238,14 @@ jobs:
           sdkmanager --install emulator \
             "system-images;android-24;google_apis;x86_64" \
             "system-images;android-33;google_apis;x86_64" \
-            "system-images;android-36;google_apis;x86_64"
+            "system-images;android-37.0;google_apis;x86_64"
 
-      - name: Install and run APK on Android 7, 13, and 16
+      - name: Install and run APK on Android 7, 13, and 17
         timeout-minutes: 35
         run: |
           set -euo pipefail
           apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
-          for api in 24 33 36; do
+          for api in 24 33 37.0; do
             name="KingsOt_API_${api}"
             avdmanager create avd --force --name "$name" \
               --package "system-images;android-${api};google_apis;x86_64" \

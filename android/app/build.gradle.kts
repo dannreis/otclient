@@ -13,12 +13,12 @@ val ciAbiFilters = providers.gradleProperty("otclient.android.abis")
 
 android {
     namespace = "com.github.otclient"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.github.otclient"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 2
         versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
