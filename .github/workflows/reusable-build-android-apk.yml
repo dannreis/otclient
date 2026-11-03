@@ -13,7 +13,7 @@ env:
   CMAKE_VERSION: "3.22.1"
   COMPILE_SDK: "36"
   BUILD_TOOLS_VERSION: "36.0.0"
-  CI_ANDROID_ABIS: "arm64-v8a"
+  CI_ANDROID_ABIS: "arm64-v8a,armeabi-v7a,x86_64"
   CI_VCPKG_TRIPLET: "arm64-android"
   LUAJIT_COMMIT: "d0e88930ddde28ff662503f9f20facf34f7265aa"
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
@@ -163,6 +163,21 @@ jobs:
           chmod +x build_luajit_android.sh
           ./build_luajit_android.sh
 
+      - name: Download and verify KingsOt client 15.25 assets
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/kingsot-client-15.25.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            --output "$archive" \
+            "https://github.com/dudantas/tibia-client/releases/download/15.25.0a00a0/tibia-client-15.25.0a00a0.zip"
+          echo "264361a161a7f7261fa08c4c3558939d209ae0cf14c860d456a4b90d4c49c943  $archive" | sha256sum --check --status
+          mkdir -p data/things/1525 data/sounds/1525 "$RUNNER_TEMP/kingsot-assets"
+          unzip -q "$archive" 'assets/*' 'assets.json' 'assets.json.sha256' 'sounds/*' -d "$RUNNER_TEMP/kingsot-assets"
+          cp -a "$RUNNER_TEMP/kingsot-assets/assets/." data/things/1525/
+          cp -a "$RUNNER_TEMP/kingsot-assets/sounds/." data/sounds/1525/
+          cp "$RUNNER_TEMP/kingsot-assets/assets.json" "$RUNNER_TEMP/kingsot-assets/assets.json.sha256" data/things/1525/
+          test -s data/things/1525/assets.json.sha256
+
       - name: Pack game assets into data.zip
         run: |
           set -euo pipefail
@@ -200,6 +215,67 @@ jobs:
           OTCLIENT_ANDROID_ABIS: ${{ env.CI_ANDROID_ABIS }}
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace --info
+
+      - name: Verify APK metadata, signing, and 16 KB alignment
+        run: |
+          set -euo pipefail
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          test -s "$apk"
+          aapt2 dump badging "$apk" | grep -E "^(sdkVersion|targetSdkVersion|native-code:)"
+          aapt2 dump badging "$apk" | grep -q "sdkVersion:'24'"
+          aapt2 dump badging "$apk" | grep -q "targetSdkVersion:'36'"
+          aapt2 dump badging "$apk" | grep -q "arm64-v8a"
+          aapt2 dump badging "$apk" | grep -q "armeabi-v7a"
+          aapt2 dump badging "$apk" | grep -q "x86_64"
+          zipalign -c -P 16 -v 4 "$apk"
+          apksigner verify --verbose "$apk"
+
+      - name: Install official Android emulator images
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager --install emulator \
+            "system-images;android-24;google_apis;x86_64" \
+            "system-images;android-33;google_apis;x86_64" \
+            "system-images;android-36;google_apis;x86_64"
+
+      - name: Install and run APK on Android 7, 13, and 16
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
+          for api in 24 33 36; do
+            name="KingsOt_API_${api}"
+            avdmanager create avd --force --name "$name" \
+              --package "system-images;android-${api};google_apis;x86_64" \
+              --device pixel_2 <<< 'no'
+            emulator -avd "$name" -no-window -no-audio -no-boot-anim \
+              -gpu swiftshader_indirect -memory 2048 -no-snapshot-save \
+              >"$RUNNER_TEMP/emulator-${api}.log" 2>&1 &
+            emulator_pid=$!
+            adb wait-for-device
+            booted=false
+            for attempt in $(seq 1 60); do
+              if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+                booted=true
+                break
+              fi
+              sleep 5
+            done
+            if [[ "$booted" != true ]]; then
+              cat "$RUNNER_TEMP/emulator-${api}.log"
+              exit 1
+            fi
+            adb logcat -c
+            adb install -r "$apk"
+            adb shell monkey -p com.github.otclient 1
+            sleep 300
+            if adb logcat -d | grep -E 'FATAL EXCEPTION|Fatal signal'; then
+              exit 1
+            fi
+            adb emu kill
+            wait "$emulator_pid" || true
+          done
 
       - name: List APK outputs
         run: find android/app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" -print
