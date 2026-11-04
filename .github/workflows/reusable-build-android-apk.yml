@@ -241,15 +241,16 @@ jobs:
           yes | sdkmanager --licenses >/dev/null
           sdkmanager --install emulator \
             "system-images;android-24;google_apis;x86_64" \
+            "system-images;android-31;google_apis;x86_64" \
             "system-images;android-33;google_apis;x86_64" \
             "system-images;android-37.0;google_apis;x86_64"
 
-      - name: Install and run APK on Android 7, 13, and 17
-        timeout-minutes: 35
+      - name: Install and run APK on Android 7, 12, 13, and 17
+        timeout-minutes: 45
         run: |
           set -euo pipefail
           apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
-          for api in 24 33 37.0; do
+          for api in 24 31 33 37.0; do
             name="KingsOt_API_${api}"
             avdmanager create avd --force --name "$name" \
               --package "system-images;android-${api};google_apis;x86_64" \
