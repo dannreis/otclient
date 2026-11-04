@@ -221,15 +221,19 @@ jobs:
         run: |
           set -euo pipefail
           apk=android/app/build/outputs/apk/release/app-release.apk
+          build_tools="${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}"
           test -s "$apk"
-          aapt2 dump badging "$apk" | grep -E "^(sdkVersion|targetSdkVersion|native-code:)"
-          aapt2 dump badging "$apk" | grep -q "sdkVersion:'24'"
-          aapt2 dump badging "$apk" | grep -q "targetSdkVersion:'37'"
-          aapt2 dump badging "$apk" | grep -q "arm64-v8a"
-          aapt2 dump badging "$apk" | grep -q "armeabi-v7a"
-          aapt2 dump badging "$apk" | grep -q "x86_64"
-          zipalign -c -P 16 -v 4 "$apk"
-          apksigner verify --verbose "$apk"
+          test -x "$build_tools/aapt2"
+          test -x "$build_tools/zipalign"
+          test -x "$build_tools/apksigner"
+          "$build_tools/aapt2" dump badging "$apk" | grep -E "^(sdkVersion|targetSdkVersion|native-code:)"
+          "$build_tools/aapt2" dump badging "$apk" | grep -q "sdkVersion:'24'"
+          "$build_tools/aapt2" dump badging "$apk" | grep -q "targetSdkVersion:'37'"
+          "$build_tools/aapt2" dump badging "$apk" | grep -q "arm64-v8a"
+          "$build_tools/aapt2" dump badging "$apk" | grep -q "armeabi-v7a"
+          "$build_tools/aapt2" dump badging "$apk" | grep -q "x86_64"
+          "$build_tools/zipalign" -c -P 16 -v 4 "$apk"
+          "$build_tools/apksigner" verify --verbose "$apk"
 
       - name: Install official Android emulator images
         run: |
